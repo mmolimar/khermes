@@ -20,7 +20,7 @@ import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import com.stratio.khermes.commons.constants.AppConstants
 import com.stratio.khermes.persistence.dao.ZkDAO
-import com.typesafe.config.{Config, ConfigFactory, ConfigResolveOptions}
+import com.typesafe.config._
 import com.typesafe.scalalogging.LazyLogging
 
 /**
@@ -37,4 +37,30 @@ object AppImplicits extends AppSerializer with LazyLogging {
   lazy implicit val system: ActorSystem = ActorSystem(AppConstants.AkkaClusterName, config)
   lazy implicit val configDAO: ZkDAO = new ZkDAO
   lazy implicit val materializer = ActorMaterializer()
+
+  private type Getter[T] = (Config, String) => T
+
+  implicit val arrayCharGetter: Getter[Array[Char]] = _ getString _ toCharArray
+  implicit val arrayBytesGetter: Getter[Array[Byte]] = _ getString _ getBytes
+  implicit val stringGetter: Getter[String] = _ getString _
+  implicit val booleanGetter: Getter[Boolean] = _ getBoolean _
+  implicit val intGetter: Getter[Int] = _ getInt _
+  implicit val doubleGetter: Getter[Double] = _ getDouble _
+  implicit val longGetter: Getter[Long] = _ getLong _
+  implicit val configListGetter: Getter[ConfigList] = _ getList _
+  implicit val configGetter: Getter[Config] = _ getConfig _
+  implicit val objectGetter: Getter[ConfigObject] = _ getObject _
+
+  implicit class ConfigOps(val config: Config) extends AnyVal {
+    def getOrElse[T: Getter](path: String, defValue: => T): T = opt[T](path) getOrElse defValue
+
+    private def opt[T: Getter](path: String): Option[T] = {
+      if (config hasPathOrNull path) {
+        val getter = implicitly[Getter[T]]
+        Some(getter(config, path))
+      } else {
+        None
+      }
+    }
+  }
 }
