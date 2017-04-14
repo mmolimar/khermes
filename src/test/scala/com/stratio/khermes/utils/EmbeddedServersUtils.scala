@@ -18,13 +18,16 @@ package com.stratio.khermes.utils
 
 import java.io.File
 import java.util.Properties
-import com.stratio.khermes.persistence.kafka.KafkaClient
+
+import com.stratio.khermes.persistence.clients.{Client, ClientFactory, KafkaClient, MqttClient}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
+import io.moquette.BrokerConstants
+import io.moquette.server.{Server => MqttServer}
 import kafka.server.{KafkaConfig, KafkaServer}
 import kafka.utils.{SystemTime, TestUtils}
 import org.apache.curator.test.TestingServer
-import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig}
 import org.apache.kafka.common.protocol.SecurityProtocol
 import org.junit.rules.TemporaryFolder
 
@@ -38,7 +41,7 @@ trait EmbeddedServersUtils extends LazyLogging {
   val logDir = tmpFolder.newFolder("kafkatest")
   val loggingEnabled = true
 
-  def withEmbeddedKafkaServer(topicsToBeCreated: Seq[TopicName])(function: KafkaServer => Any): Unit = {
+  def withEmbeddedKafkaServer()(function: KafkaServer => Any): Unit = {
     withEmbeddedZookeeper() { zookeeperServer =>
       zookeeperServer.start
       val kafkaConfig = new KafkaConfig(kafkaConfiguration(logDir, zookeeperServer.getConnectString), loggingEnabled)
@@ -47,21 +50,31 @@ trait EmbeddedServersUtils extends LazyLogging {
         logDir, zookeeperConnectString)
 
       val kafkaServer = TestUtils.createServer(kafkaConfig, SystemTime)
-      Try {
-        kafkaServer.startup
-        val brokerList =
-          s"""${kafkaServer.config.hostName}:${
-            Integer.toString(kafkaServer.boundPort(SecurityProtocol.PLAINTEXT))
-          }"""
+      kafkaServer.startup
+      val brokerList =
+        s"""${kafkaServer.config.hostName}:${
+          Integer.toString(kafkaServer.boundPort(SecurityProtocol.PLAINTEXT))
+        }"""
 
-        logger.debug("Startup of embedded Kafka broker at {} completed (with ZK ensemble at {}) ...",
-          brokerList, zookeeperConnectString)
+      logger.debug("Startup of embedded Kafka broker at {} completed (with ZK ensemble at {}) ...",
+        brokerList, zookeeperConnectString)
 
-        function(kafkaServer)
-      }
+      function(kafkaServer)
       kafkaServer.shutdown
       zookeeperServer.stop
     }
+  }
+
+  def withEmbeddedMqttServer()(function: MqttServer => Any): Unit = {
+    val mqttServer = new MqttServer
+    val config = mqttConfiguration
+    mqttServer.startServer(config)
+
+    logger.debug("Startup of embedded MQTT broker at port {}",
+      config.getProperty(BrokerConstants.PORT_PROPERTY_NAME))
+
+    function(mqttServer)
+    mqttServer.stopServer
   }
 
 
@@ -75,9 +88,33 @@ trait EmbeddedServersUtils extends LazyLogging {
     testFunction(producer)
   }
 
-  def withKafkaClient[V](kafkaServer: KafkaServer)(function: KafkaClient[V] => Any): Unit = {
-    val kafkaClient = new KafkaClient[V](ConfigFactory.parseMap(kafkaServer.config.originals))
+  def withKafkaClient[V <: Object](kafkaServer: KafkaServer, topic: String)(function: KafkaClient[V] => Any): Unit = {
+    val props = kafkaServer.config.originals
+    props.put("topic", topic)
+    val kafkaClient = KafkaClient[V](ConfigFactory.parseMap(props))
     function(kafkaClient)
+  }
+
+  def withMqttClient[V <: Object](mqttServer: MqttServer, topic: String)(function: MqttClient[V] => Any): Unit = {
+    import scala.collection.JavaConverters._
+    val config = Map("topic" -> topic)
+    val mqttClient = MqttClient[V](ConfigFactory.parseMap(config.asJava))
+    function(mqttClient)
+  }
+
+  def withClientsWrapped[V <: Object](kafkaServer: KafkaServer,
+                                      mqttServer: MqttServer, topic: String)
+                                     (function: Client[Object, Seq[Any]] => Any): Unit = {
+    val kafkaConfig = kafkaServer.config.originals
+    kafkaConfig.put("topic", topic)
+    import scala.collection.JavaConverters._
+    val mqttUri = "tcp://" + mqttConfiguration.getProperty(BrokerConstants.HOST_PROPERTY_NAME)  + ":" +
+      mqttConfiguration.getProperty(BrokerConstants.HOST_PROPERTY_NAME)
+    val mqttConfig = Map("topic" -> topic, "uri" -> mqttUri).asJava
+    val clientConfig = Map("kafka" -> kafkaConfig, "mqtt" -> mqttConfig)
+
+    val clientWrapper = ClientFactory.fromConfig(ConfigFactory.parseMap(clientConfig.asJava))
+    function(clientWrapper)
   }
 
   //TODO: Accept initial config parameter (specific traits)
@@ -91,12 +128,18 @@ trait EmbeddedServersUtils extends LazyLogging {
     kafkaConfig.put(KafkaConfig.AutoCreateTopicsEnableProp, "true")
     kafkaConfig.put(KafkaConfig.MessageMaxBytesProp, "1000000")
     kafkaConfig.put(KafkaConfig.ControlledShutdownEnableProp, "true")
-    kafkaConfig.put("kafka.bootstrap.servers", "127.0.0.1:9092")
-    kafkaConfig.put("kafka.key.serializer", "org.apache.kafka.common.serialization.StringSerializer")
-    kafkaConfig.put("kafka.value.serializer", "org.apache.kafka.common.serialization.StringSerializer")
+    kafkaConfig.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "127.0.0.1:9092")
+    kafkaConfig.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArraySerializer")
+    kafkaConfig.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArraySerializer")
     kafkaConfig.setProperty(KafkaConfig.LogDirProp, logDir.getAbsolutePath)
     //effectiveConfig.putAll(initialConfig);
     kafkaConfig
   }
 
+  private def mqttConfiguration = {
+    new Properties {
+      setProperty(BrokerConstants.HOST_PROPERTY_NAME, BrokerConstants.HOST)
+      setProperty(BrokerConstants.PORT_PROPERTY_NAME, BrokerConstants.PORT.toString)
+    }
+  }
 }

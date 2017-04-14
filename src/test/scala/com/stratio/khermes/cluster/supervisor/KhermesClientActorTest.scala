@@ -24,11 +24,11 @@ class KhermesClientActorTest extends FlatSpec
   with Matchers{
   it should "give a message with configuration empties" in {
     val khermes = KhermesClientActor
-    khermes.messageFeedback(None,None,None) shouldBe "Error: To start nodes is necessary to set template and kafka and khermes configuration."
+    khermes.messageFeedback(None,None,None) shouldBe "Error: To start nodes is necessary to set template and clients and khermes configuration."
   }
   it should "give a message with kafka and template configuration" in {
     val khermes = KhermesClientActor
-    khermes.messageFeedback(Option("khermes"),None,None) shouldBe "Error: To start nodes is necessary to set template and kafka configuration."
+    khermes.messageFeedback(Option("khermes"),None,None) shouldBe "Error: To start nodes is necessary to set template and clients configuration."
   }
   it should "give a message with template configuration" in {
     val khermes = KhermesClientActor

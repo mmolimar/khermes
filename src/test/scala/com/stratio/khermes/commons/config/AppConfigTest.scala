@@ -32,8 +32,9 @@ class AppConfigTest extends FlatSpec
         |khermes {
         |  templates-path = "/some/test/path"
         |  template-name = "someTemplate"
-        |  topic = "someTopic"
+        |  schema.registry.url = "htitp://localhost:16803"
         |  i18n = "EN"
+        |  serializer = "json"
         |}
       """.stripMargin
 
@@ -44,6 +45,7 @@ class AppConfigTest extends FlatSpec
         |  acks = "-1"
         |  key.serializer = "org.apache.kafka.common.serialization.StringSerializer"
         |  value.serializer = "org.apache.kafka.common.serialization.StringSerializer"
+        |  topic = "someTopic"
         |}
       """.stripMargin
 
@@ -55,6 +57,7 @@ class AppConfigTest extends FlatSpec
         |  key.serializer = "io.confluent.kafka.serializers.KafkaAvroSerializer"
         |  value.serializer = "io.confluent.kafka.serializers.KafkaAvroSerializer"
         |  schema.registry.url = "http://localhost:16803"
+        |  topic = "someTopic"
         |}
       """.stripMargin
 
@@ -106,6 +109,7 @@ class AppConfigTest extends FlatSpec
         |  template-name = "someTemplate"
         |  topic = "someTopic"
         |  i18n = "EN"
+        |  serializer = "json"
         |}
       """.stripMargin
 
@@ -119,6 +123,7 @@ class AppConfigTest extends FlatSpec
         |  timeout-rules {
         |    number-of-events: 1000
         |  }
+        |  serializer = "json"
         |}
       """.stripMargin
 
@@ -132,6 +137,7 @@ class AppConfigTest extends FlatSpec
         |  timeout-rules {
         |    duration: 2 seconds
         |  }
+        |  serializer = "json"
         |}
       """.stripMargin
 
@@ -140,11 +146,11 @@ class AppConfigTest extends FlatSpec
         |khermes {
         |  templates-path = "/some/test/path"
         |  template-name = "someTemplate"
-        |  topic = "someTopic"
         |  i18n = "EN"
         |  stop-rules {
         |    number-of-events: 500
         |  }
+        |  serializer = "json"
         |}
       """.stripMargin
 
@@ -165,12 +171,6 @@ class AppConfigTest extends FlatSpec
     it should "throw an error when a mandatory field is not supplied when the serializer is JSON" in {
       a[AssertionError] should be thrownBy {
         AppConfig(wrongKhermesConfig, jsonKafkaConfig, template)
-      }
-    }
-
-    it should "throw an error when a mandatory field is not supplied when the serializer is Avro" in {
-      a[AssertionError] should be thrownBy {
-        AppConfig(khermesConfig, wrongKafkaConfig, template)
       }
     }
 
@@ -224,6 +224,5 @@ class AppConfigTest extends FlatSpec
       hc.templateContent should be(template)
       hc.templateName should be("someTemplate")
       hc.template should be(template)
-      hc.topic should be("someTopic")
     }
   }

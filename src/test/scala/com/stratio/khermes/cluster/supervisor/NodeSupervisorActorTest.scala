@@ -30,13 +30,18 @@ class NodeSupervisorActorTest extends BaseActorTest {
 
   val nodeSupervisor = system.actorOf(Props(new NodeSupervisorActor()), "node-supervisor")
 
-  val kafkaConfigContent =
+  val clientsConfigContent =
     """
       |kafka {
       |  bootstrap.servers = "localhost:9092"
       |  acks = "-1"
       |  key.serializer = "org.apache.kafka.common.serialization.StringSerializer"
       |  value.serializer = "org.apache.kafka.common.serialization.StringSerializer"
+      |}
+      |mqtt {
+      |  uri = "tcp://localhost:1883"
+      |  qos = 0
+      |  retain = false
       |}
     """.stripMargin
 
@@ -75,7 +80,7 @@ class NodeSupervisorActorTest extends BaseActorTest {
   "An WorkerSupervisorActor" should {
     "Start n threads of working kafka producers" in {
       within(10 seconds) {
-        nodeSupervisor ! Start(Seq.empty, AppConfig(khermesConfigContent, kafkaConfigContent, templateContent))
+        nodeSupervisor ! Start(Seq.empty, AppConfig(khermesConfigContent, clientsConfigContent, templateContent))
         expectMsg(WorkerStatus.Started)
       }
     }
