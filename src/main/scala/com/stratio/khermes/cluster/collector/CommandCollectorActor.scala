@@ -66,8 +66,8 @@ class CommandCollectorActor extends ActorPublisher[CommandCollectorActor.Result]
     case WSProtocolMessage(WsProtocolCommand.CreateGeneratorConfig, args) =>
       createConfig(args, WsProtocolCommand.CreateGeneratorConfig, AppConstants.GeneratorConfigPath)
 
-    case WSProtocolMessage(WsProtocolCommand.CreateKafkaConfig, args) =>
-      createConfig(args, WsProtocolCommand.CreateKafkaConfig, AppConstants.KafkaConfigPath)
+    case WSProtocolMessage(WsProtocolCommand.CreateClientsConfig, args) =>
+      createConfig(args, WsProtocolCommand.CreateClientsConfig, AppConstants.ClientsConfigPath)
 
     case WSProtocolMessage(WsProtocolCommand.CreateAvroConfig, args) =>
       createConfig(args, WsProtocolCommand.CreateAvroConfig, AppConstants.AvroConfigPath)
@@ -95,22 +95,22 @@ class CommandCollectorActor extends ActorPublisher[CommandCollectorActor.Result]
 
   def start(args: Map[String, String]): Unit = {
     val argsTwirlTemplate = args.get(WsProtocolCommand.ArgsTwirlTemplate).getOrElse(
-      throw new IllegalArgumentException("a twirl-template must be supplied when you send a Start signal"))
-    val argsKafkaConfig = args.get(WsProtocolCommand.ArgsKafkaConfig).getOrElse(
-      throw new IllegalArgumentException("a kafka-config must be supplied when you send a Start signal"))
+      throw new IllegalArgumentException(s"a ${AppConstants.TwirlTemplatePath} must be supplied when you send a Start signal"))
+    val argsClientsConfig = args.get(WsProtocolCommand.ArgsClientsConfig).getOrElse(
+      throw new IllegalArgumentException(s"a ${AppConstants.ClientsConfigPath} must be supplied when you send a Start signal"))
     val argsGeneratorConfig = args.get(WsProtocolCommand.ArgsGeneratorConfig).getOrElse(
-      throw new IllegalArgumentException("a generator-config must be supplied when you send a Start signal"))
+      throw new IllegalArgumentException(s"a ${AppConstants.GeneratorConfigPath} must be supplied when you send a Start signal"))
     val argsAvroConfigOption = args.get(WsProtocolCommand.ArgsAvroConfig)
     val nodeIds = args.get(WsProtocolCommand.ArgsNodeIds).map(value => value.split(" ")).toSeq.flatten
 
     val twirlTemplate = configDAO.read(s"${AppConstants.TwirlTemplatePath}/${argsTwirlTemplate}")
-    val kafkaConfig = configDAO.read(s"${AppConstants.KafkaConfigPath}/${argsKafkaConfig}")
+    val clientsConfig = configDAO.read(s"${AppConstants.ClientsConfigPath}/${argsClientsConfig}")
     val generatorConfig = configDAO.read(s"${AppConstants.GeneratorConfigPath}/${argsGeneratorConfig}")
     val avroConfig = argsAvroConfigOption.map(
       argsAvroConfig => configDAO.read(s"${AppConstants.AvroConfigPath}/${argsAvroConfig}"))
 
     mediator ! Publish("content",
-      NodeSupervisorActor.Start(nodeIds, AppConfig(generatorConfig, kafkaConfig, twirlTemplate, avroConfig)))
+      NodeSupervisorActor.Start(nodeIds, AppConfig(generatorConfig, clientsConfig, twirlTemplate, avroConfig)))
     self ! Result("OK", s"Sending Start signal to nodes ${nodeIds.mkString(" ")}")
   }
 

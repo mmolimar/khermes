@@ -30,75 +30,75 @@ case class KhermesConsoleHelper(client: KhermesClientActor) {
 
   parseLines(
     firstLoad(AppConstants.GeneratorConfigPath),
-    firstLoad(AppConstants.KafkaConfigPath),
+    firstLoad(AppConstants.ClientsConfigPath),
     firstLoad(AppConstants.TwirlTemplatePath),
     firstLoad(AppConstants.AvroConfigPath)
   )
 
   //scalastyle:off
   def parseLines(khermesConfig: Option[String] = None,
-                 kafkaConfig: Option[String] = None,
+                 clientsConfig: Option[String] = None,
                  template: Option[String] = None,
                  avroConfig: Option[String] = None): Unit = {
     reader.readLine.trim match {
       case "set khermes" =>
-        val config = setConfiguration(khermesConfig, kafkaConfig, template, avroConfig)
+        val config = setConfiguration(khermesConfig, clientsConfig, template, avroConfig)
         configDAO.create(AppConstants.GeneratorConfigPath, config.get)
-        parseLines(config, kafkaConfig, template, avroConfig)
+        parseLines(config, clientsConfig, template, avroConfig)
 
-      case "set kafka" =>
-        val config = setConfiguration(khermesConfig, kafkaConfig, template, avroConfig)
-        configDAO.create(AppConstants.KafkaConfigPath, config.get)
+      case "set clients" =>
+        val config = setConfiguration(khermesConfig, clientsConfig, template, avroConfig)
+        configDAO.create(AppConstants.ClientsConfigPath, config.get)
         parseLines(khermesConfig, config, template, avroConfig)
 
       case "set template" =>
-        val config = setConfiguration(khermesConfig, kafkaConfig, template, avroConfig)
+        val config = setConfiguration(khermesConfig, clientsConfig, template, avroConfig)
         configDAO.create(AppConstants.TwirlTemplatePath, config.get)
-        parseLines(khermesConfig, kafkaConfig, config, avroConfig)
+        parseLines(khermesConfig, clientsConfig, config, avroConfig)
 
       case "set avro" =>
-        val config = setConfiguration(khermesConfig, kafkaConfig, template, avroConfig)
+        val config = setConfiguration(khermesConfig, clientsConfig, template, avroConfig)
         configDAO.create(AppConstants.AvroConfigPath, config.get)
-        parseLines(khermesConfig, kafkaConfig, template, config)
+        parseLines(khermesConfig, clientsConfig, template, config)
 
       case value if value.startsWith("start") =>
-        startStop(value, "start", khermesConfig, kafkaConfig, template, avroConfig)
-        parseLines(khermesConfig, kafkaConfig, template, avroConfig)
+        startStop(value, "start", khermesConfig, clientsConfig, template, avroConfig)
+        parseLines(khermesConfig, clientsConfig, template, avroConfig)
 
       case value if value.startsWith("stop") =>
-        startStop(value, "stop", khermesConfig, kafkaConfig, template, avroConfig)
-        parseLines(khermesConfig, kafkaConfig, template, avroConfig)
+        startStop(value, "stop", khermesConfig, clientsConfig, template, avroConfig)
+        parseLines(khermesConfig, clientsConfig, template, avroConfig)
 
       case "ls" =>
         ls
-        parseLines(khermesConfig, kafkaConfig, template, avroConfig)
+        parseLines(khermesConfig, clientsConfig, template, avroConfig)
 
       case "show config" =>
-        showConfig(khermesConfig, kafkaConfig, template, avroConfig)
-        parseLines(khermesConfig, kafkaConfig, template, avroConfig)
+        showConfig(khermesConfig, clientsConfig, template, avroConfig)
+        parseLines(khermesConfig, clientsConfig, template, avroConfig)
 
       case "help" =>
         help
-        parseLines(khermesConfig, kafkaConfig, template, avroConfig)
+        parseLines(khermesConfig, clientsConfig, template, avroConfig)
 
       case "clear" =>
         clearScreen
-        parseLines(khermesConfig, kafkaConfig, template, avroConfig)
+        parseLines(khermesConfig, clientsConfig, template, avroConfig)
 
       case "exit" | "quit" | "bye" =>
         System.exit(0)
 
       case "" =>
-        parseLines(khermesConfig, kafkaConfig, template, avroConfig)
+        parseLines(khermesConfig, clientsConfig, template, avroConfig)
 
       case _ =>
         printNotFoundCommand
-        parseLines(khermesConfig, kafkaConfig, template, avroConfig)
+        parseLines(khermesConfig, clientsConfig, template, avroConfig)
     }
   }
 
   def setConfiguration(khermesConfig: Option[String] = None,
-                       kafkaConfig: Option[String] = None,
+                       clientsConfig: Option[String] = None,
                        template: Option[String] = None,
                        avroConfig: Option[String] = None): Option[String] = {
     println("Press Control + D to finish")
@@ -110,7 +110,7 @@ case class KhermesConsoleHelper(client: KhermesClientActor) {
   def startStop(line: String,
                 firstWord: String,
                 khermesConfig: Option[String] = None,
-                kafkaConfig: Option[String] = None,
+                clientsConfig: Option[String] = None,
                 template: Option[String] = None,
                 avroConfig: Option[String] = None): Unit = {
     val ids = line.replace(firstWord, "").trim.split(",").map(_.trim).filter("" != _)
@@ -118,7 +118,7 @@ case class KhermesConsoleHelper(client: KhermesClientActor) {
     firstWord match {
       case "start" =>
         ids.map(id => println(s"Sending $id start message"))
-        client.start(khermesConfig, kafkaConfig, template, avroConfig, ids)
+        client.start(khermesConfig, clientsConfig, template, avroConfig, ids)
       case "stop" =>
         ids.map(id => println(s"Sending $id stop message"))
         client.stop(ids)
@@ -135,11 +135,11 @@ case class KhermesConsoleHelper(client: KhermesClientActor) {
   }
 
   def showConfig(khermesConfig: Option[String] = None,
-                 kafkaConfig: Option[String] = None,
+                 clientsConfig: Option[String] = None,
                  template: Option[String] = None,
                  avroConfig: Option[String] = None) = {
-    println("Kafka configuration:")
-    println(kafkaConfig.getOrElse("Kafka config is empty"))
+    println("Clients configuration:")
+    println(clientsConfig.getOrElse("Clients config is empty"))
     println("Khermes configuration:")
     println(khermesConfig.getOrElse("Khermes config is empty"))
     println("Template:")
@@ -151,7 +151,7 @@ case class KhermesConsoleHelper(client: KhermesClientActor) {
   def help: Unit = {
     println("Khermes client provide the next commands to manage your Khermes cluster:")
     println("set khermes            Add your Khermes configuration.")
-    println("set kafka              Add your Kafka configuration.")
+    println("set clients              Add your clients configuration.")
     println("set template           Add your template.")
     println("set avro               Add your Avro configuration.")
     println("show config            Show all configurations.")

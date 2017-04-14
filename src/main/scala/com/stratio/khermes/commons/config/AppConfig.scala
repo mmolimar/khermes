@@ -29,17 +29,17 @@ import com.stratio.khermes.commons.config.AppConfig._
  * Remember that it should be serializable because will be part as an Akka message.
  *
  * @param khermesConfigContent with configuration about khermes generator.
- * @param kafkaConfigContent with kafka configuration.
+ * @param clientsConfigContent with clients configuration.
  * @param template to generate.
  * @param avroSchema in the case that you are using avro serialization.
  */
 case class AppConfig(khermesConfigContent: String,
-                     kafkaConfigContent: String,
+                     clientsConfigContent: String,
                      template: String,
                      avroSchema: Option[String] = None) {
 
   val khermesConfig = ConfigFactory.parseString(khermesConfigContent)
-  val kafkaConfig = ConfigFactory.parseString(kafkaConfigContent)
+  val clientsConfig = ConfigFactory.parseString(clientsConfigContent)
 
   assertCorrectConfig()
 
@@ -50,21 +50,19 @@ case class AppConfig(khermesConfigContent: String,
     def buildErrors(mandatoryFields: Seq[String]): Seq[String] =
       for {
         mandatoryField <- mandatoryFields
-        if Try(khermesConfig.getAnyRef(mandatoryField)).isFailure && Try(kafkaConfig.getAnyRef(mandatoryField)).isFailure
+        if Try(khermesConfig.getAnyRef(mandatoryField)).isFailure && Try(clientsConfig.getAnyRef(mandatoryField)).isFailure
       } yield(s"$mandatoryField not found in the config.")
 
-    val errors = buildErrors(MandatoryFields) ++ (if(configType == ConfigType.Avro) buildErrors(AvroMandatoryFields) else Seq.empty)
+    val errors = buildErrors(MandatoryFields)
     assert(errors.isEmpty, errors.mkString("\n"))
   }
 
   def configType(): ConfigType.Value =
-    if(kafkaConfig.getString("kafka.key.serializer") == AppConstants.KafkaAvroSerializer) {
+    if(clientsConfig.getString("kafka.key.serializer") == AppConstants.KafkaAvroSerializer) {
       ConfigType.Avro
     } else {
       ConfigType.Json
     }
-
-  def topic: String = khermesConfig.getString("khermes.topic")
 
   def templateName: String = khermesConfig.getString("khermes.template-name")
 
@@ -83,14 +81,9 @@ case class AppConfig(khermesConfigContent: String,
 object AppConfig {
 
   val MandatoryFields = Seq(
-    "khermes.topic",
     "khermes.template-name",
     "khermes.i18n",
-    "kafka.key.serializer"
-  )
-
-  val AvroMandatoryFields = Seq(
-    "kafka.schema.registry.url"
+    "khermes.serializer"
   )
 
   object ConfigType extends Enumeration {

@@ -28,14 +28,14 @@ case object WsProtocolCommand extends Enumeration {
   val Start = Value("start")
   val Stop = Value("stop")
   val CreateTwirlTemplate = Value("create twirl-template")
-  val CreateKafkaConfig = Value("create kafka-config")
+  val CreateClientsConfig = Value("create clients-config")
   val CreateGeneratorConfig = Value("create generator-config")
   val CreateAvroConfig = Value("create avro-config")
 
   val ArgsName = "name"
   val ArgsContent = "content"
   val ArgsTwirlTemplate = "twirl-template"
-  val ArgsKafkaConfig = "kafka-config"
+  val ArgsClientsConfig = "clients-config"
   val ArgsGeneratorConfig = "generator-config"
   val ArgsAvroConfig = "avro-config"
   val ArgsNodeIds = "node-ids"

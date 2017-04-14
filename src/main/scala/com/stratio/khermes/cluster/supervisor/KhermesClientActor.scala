@@ -61,26 +61,26 @@ class KhermesClientActor extends ActorPublisher[String] with ActorLogging {
   /**
    * Starts event generation in N nodes.
    * @param khermesConfigOption with Khermes' configuration.
-   * @param kafkaConfigOption with Kafka's configuration.
+   * @param clientsConfigOption with Clients' configuration.
    * @param templateOption with the template
    * @param nodeIds with the ids that should be start the generation.
    *                If this Seq is empty it will try to start all of them.
    */
   def start(khermesConfigOption: Option[String],
-            kafkaConfigOption: Option[String],
+            clientsConfigOption: Option[String],
             templateOption: Option[String],
             avroConfigOption: Option[String],
             nodeIds: Seq[String]): Unit = {
     (for {
       khermesConfig <- khermesConfigOption
-      kafkaConfig <- kafkaConfigOption
+      clientsConfig <- clientsConfigOption
       template <- templateOption
     } yield {
       mediator ! Publish("content",
-        NodeSupervisorActor.Start(nodeIds, AppConfig(khermesConfig, kafkaConfig, template, avroConfigOption)))
+        NodeSupervisorActor.Start(nodeIds, AppConfig(khermesConfig, clientsConfig, template, avroConfigOption)))
     }).getOrElse({
       //scalastyle:off
-      println(KhermesClientActor.messageFeedback(khermesConfigOption,kafkaConfigOption,templateOption))
+      println(KhermesClientActor.messageFeedback(khermesConfigOption,clientsConfigOption,templateOption))
       //scalastyle:on
     })
   }
@@ -104,11 +104,11 @@ object KhermesClientActor {
 
   // TODO (Alvaro Nistal) this method should be refactored.
   def messageFeedback(khermesConfigOption: Option[String],
-                      kafkaConfigOption: Option[String],
+                      clientsConfigOption: Option[String],
                       templateOption: Option[String]): String = {
     var m = List[String]()
     if (khermesConfigOption.isEmpty) m = "khermes" :: m
-    if (kafkaConfigOption.isEmpty) m = "kafka" :: m
+    if (clientsConfigOption.isEmpty) m = "clients" :: m
     if (templateOption.isEmpty) m = "template" :: m
     if (m.isEmpty) "Your configuration is OK" else s"Error: To start nodes is necessary to set ${m.mkString(" and ")} configuration."
   }
