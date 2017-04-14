@@ -16,6 +16,7 @@
 
 package com.stratio.khermes.cluster.supervisor
 
+import java.io.Closeable
 import java.util.UUID
 
 import akka.actor.{Actor, ActorLogging}
@@ -24,7 +25,7 @@ import com.stratio.khermes.cluster.supervisor.NodeSupervisorActor.Result
 import com.stratio.khermes.commons.config.AppConfig
 import com.stratio.khermes.helpers.faker.Faker
 import com.stratio.khermes.helpers.twirl.TwirlHelper
-import com.stratio.khermes.persistence.kafka.KafkaClient
+import com.stratio.khermes.persistence.clients.{Client, ClientFactory}
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.avro.Schema.Parser
@@ -110,7 +111,6 @@ class NodeExecutorThread(hc: AppConfig)(implicit config: Config) extends NodeExe
   //scalastyle:off
   override def run(): Unit = {
     running = true
-    val kafkaClient = new KafkaClient[Object](hc.kafkaConfig)
     val template = TwirlHelper.template[(Faker) => Txt](hc.templateContent, hc.templateName)
     val khermes = Faker(hc.khermesI18n)
 
@@ -120,16 +120,21 @@ class NodeExecutorThread(hc: AppConfig)(implicit config: Config) extends NodeExe
     val timeoutNumberOfEventsDurationOption = hc.timeoutNumberOfEventsDurationOption
     val stopNumberOfEventsOption = hc.stopNumberOfEventsOption
 
-    /**
-     * If you are defining the following example configuration:
-     * timeout-rules {
-     * number-of-events: 1000
-     * duration: 2 seconds
-     * }
-     * Then when the node produces 1000 events, it will wait 2 seconds to start producing again.
-     * @param numberOfEvents with the current number of events generated.
-     */
-    def performTimeout(numberOfEvents: Int): Unit =
+    def closer[T, C <: Closeable](c: C)(f: C => T): T =
+      try f(c)
+      finally c.close
+
+    def perform(client: Client[Object, Seq[Any]]): Unit = {
+      /**
+        * If you are defining the following example configuration:
+        * timeout-rules {
+        * number-of-events: 1000
+        * duration: 2 seconds
+        * }
+        * Then when the node produces 1000 events, it will wait 2 seconds to start producing again.
+        * @param numberOfEvents with the current number of events generated.
+        */
+      def performTimeout(numberOfEvents: Int): Unit =
       for {
         timeoutNumberOfEvents <- timeoutNumberOfEventsOption
         timeoutNumberOfEventsDuration <- timeoutNumberOfEventsDurationOption
@@ -139,40 +144,47 @@ class NodeExecutorThread(hc: AppConfig)(implicit config: Config) extends NodeExe
         Thread.sleep(timeoutNumberOfEventsDuration.toMillis)
       })
 
+      val startTime = System.currentTimeMillis
 
-    /**
-     * Starts to generate events in a recursive way.
-     * Note that this generation only will stop in two cases:
-     *   1. The user sends an stop event to the supervisor actor; the supervisor change the state of running to false,
-     * stopping the execution.
-     *   2. The user defines the following Hermes' configuration:
-     * stop-rules {
-     * number-of-events: 5000
-     * }
-     * In this case only it will generate 5000 events, then automatically the thread puts its state of running to
-     * false stopping the event generation.
-     * @param numberOfEvents with the current number of events generated.
-     */
-    @tailrec
-    def recursiveGeneration(numberOfEvents: Int): Unit =
-    if (running) {
-      logger.debug(s"$numberOfEvents")
-      val json = template.static(khermes).toString()
-      parserOption match {
-        case None =>
-          kafkaClient.send(hc.topic, json)
-          performTimeout(numberOfEvents)
+      /**
+        * Starts to generate events in a recursive way.
+        * Note that this generation only will stop in two cases:
+        *   1. The user sends an stop event to the supervisor actor; the supervisor change the state of running to false,
+        * stopping the execution.
+        *   2. The user defines the following Hermes' configuration:
+        * stop-rules {
+        * number-of-events: 5000
+        * }
+        * In this case only it will generate 5000 events, then automatically the thread puts its state of running to
+        * false stopping the event generation.
+        *
+        * @param numberOfEvents with the current number of events generated.
+        */
+      @tailrec
+      def recursiveGeneration(numberOfEvents: Int): Unit =
+      if (running) {
+        logger.debug(s"Number of messages sent: $numberOfEvents")
+        val content = template.static(khermes).toString
+        parserOption match {
+          case None =>
+            client.send(content)
+            performTimeout(numberOfEvents)
 
-        case Some(value) =>
-          val record = converter.convertToGenericDataRecord(json.getBytes("UTF-8"), value)
-          kafkaClient.send(hc.topic, record)
-          performTimeout(numberOfEvents)
+          case Some(value) =>
+            val record = converter.convertToGenericDataRecord(content.getBytes("UTF-8"), value)
+            client.send(record)
+            performTimeout(numberOfEvents)
+        }
+        if (stopNumberOfEventsOption.filter(_ == numberOfEvents).map(_ => stopExecutor).isEmpty){}
+          recursiveGeneration(numberOfEvents + 1)
+      } else {
+        logger.info(s"Total messages sent: $numberOfEvents. " +
+          s"Average of ${numberOfEvents * 1000 / ((System.currentTimeMillis - startTime))} messages per second.")
       }
-      if (stopNumberOfEventsOption.filter(_ == numberOfEvents).map(_ => stopExecutor).isEmpty)
-        recursiveGeneration(numberOfEvents + 1)
+      recursiveGeneration(0)
     }
 
-    recursiveGeneration(0)
+    closer(ClientFactory.fromConfig(hc.clientsConfig))(perform)
   }
 }
 
