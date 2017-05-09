@@ -112,7 +112,7 @@ class NodeExecutorThread(hc: AppConfig)(implicit config: Config) extends NodeExe
   override def run(): Unit = {
     running = true
     val template = TwirlHelper.template[(Faker) => Txt](hc.templateContent, hc.templateName)
-    val khermes = Faker(hc.khermesI18n)
+    val khermes = Faker(hc.khermesI18n, hc.txtFile)
 
     val parserOption = hc.avroSchema.map(new Parser().parse(_))
 

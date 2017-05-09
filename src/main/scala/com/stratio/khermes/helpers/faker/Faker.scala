@@ -29,7 +29,7 @@ import scala.util.{Failure, Random, Success, Try}
 /**
  * Khermes util used for to generate random values.
  */
-case class Faker(locale: String = AppConstants.DefaultLocale) extends AppSerializer {
+case class Faker(locale: String = AppConstants.DefaultLocale, path: String = "") extends AppSerializer {
 
   object Name extends NameGenerator(locale)
 
@@ -42,6 +42,9 @@ case class Faker(locale: String = AppConstants.DefaultLocale) extends AppSeriali
   object Music extends MusicGenerator(locale)
 
   object Email extends EmailGenerator(locale)
+
+  object TxtFile extends FileReaderGenerator(path)
+
 }
 
 trait FakerGenerator extends AppSerializer {

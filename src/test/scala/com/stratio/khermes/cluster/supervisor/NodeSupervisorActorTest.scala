@@ -51,6 +51,7 @@ class NodeSupervisorActorTest extends BaseActorTest {
       |  templates-path = "/tmp/khermes/templates"
       |  topic = "chustas"
       |  template-name = "chustasTemplate"
+      |  txt-file = ""
       |  i18n = "ES"
       |}
     """.stripMargin

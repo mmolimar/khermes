@@ -32,6 +32,7 @@ class AppConfigTest extends FlatSpec
         |khermes {
         |  templates-path = "/some/test/path"
         |  template-name = "someTemplate"
+        |  txt-file = ""
         |  schema.registry.url = "htitp://localhost:16803"
         |  i18n = "EN"
         |  serializer = "json"
@@ -66,6 +67,7 @@ class AppConfigTest extends FlatSpec
         |khermes {
         |  templates-path = "/some/test/path"
         |  template-name = "someTemplate"
+        |  txt-file = ""
         |  i18n = "EN"
         |}
       """.stripMargin
@@ -107,6 +109,7 @@ class AppConfigTest extends FlatSpec
         |khermes {
         |  templates-path = "/some/test/path"
         |  template-name = "someTemplate"
+        |  txt-file = ""
         |  topic = "someTopic"
         |  i18n = "EN"
         |  serializer = "json"
@@ -118,6 +121,7 @@ class AppConfigTest extends FlatSpec
         |khermes {
         |  templates-path = "/some/test/path"
         |  template-name = "someTemplate"
+        |  txt-file = ""
         |  topic = "someTopic"
         |  i18n = "EN"
         |  timeout-rules {
@@ -132,6 +136,7 @@ class AppConfigTest extends FlatSpec
         |khermes {
         |  templates-path = "/some/test/path"
         |  template-name = "someTemplate"
+        |  txt-file = ""
         |  topic = "someTopic"
         |  i18n = "EN"
         |  timeout-rules {
@@ -146,6 +151,7 @@ class AppConfigTest extends FlatSpec
         |khermes {
         |  templates-path = "/some/test/path"
         |  template-name = "someTemplate"
+        |  txt-file = ""
         |  i18n = "EN"
         |  stop-rules {
         |    number-of-events: 500

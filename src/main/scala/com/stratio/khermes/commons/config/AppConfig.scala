@@ -70,6 +70,8 @@ case class AppConfig(khermesConfigContent: String,
 
   def khermesI18n: String = khermesConfig.getString("khermes.i18n")
 
+  def txtFile: String = khermesConfig.getString("khermes.txt-file")
+
   def timeoutNumberOfEventsOption: Option[Int] = Try(khermesConfig.getInt("khermes.timeout-rules.number-of-events")).toOption
 
   def timeoutNumberOfEventsDurationOption: Option[Duration] = Try(khermesConfig.getDuration("khermes.timeout-rules.duration")).toOption
@@ -82,6 +84,7 @@ object AppConfig {
 
   val MandatoryFields = Seq(
     "khermes.template-name",
+    "khermes.txt-file",
     "khermes.i18n",
     "khermes.serializer"
   )
