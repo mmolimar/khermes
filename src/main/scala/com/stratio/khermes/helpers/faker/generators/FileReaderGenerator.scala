@@ -20,6 +20,7 @@ import com.stratio.khermes.commons.implicits.AppSerializer
 import com.stratio.khermes.helpers.faker.FakerGenerator
 import com.typesafe.scalalogging.LazyLogging
 
+import scala.annotation.tailrec
 import scala.collection.Iterator
 import scala.io.Source
 
@@ -40,7 +41,8 @@ case class FileReaderGenerator(path: String) extends FakerGenerator
     }
   }
 
-  def readLine(): String = {
+  @tailrec
+  final def readLine(): String = {
     if (it.hasNext) {
       it.next()
     } else {
